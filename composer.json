@@ -1,5 +1,5 @@
 {
-  "name": "pamkil/omnipay-atol",
+  "name": "timepad/omnipay-atol",
   "type": "library",
   "description": "Check atol gateway for Omnipay",
   "keywords": [

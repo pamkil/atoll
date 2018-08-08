@@ -14,7 +14,7 @@ abstract class AbstractRestRequest extends AbstractRequest
 {
     const API_VERSION = 'v3';
     protected $liveEndpoint = 'https://online.atol.ru/possystem';
-    protected $testEndpoint = 'https://online.atol.ru/possystem';
+    protected $testEndpoint = 'https://testonline.atol.ru/possystem';
 
 
     public function getLogin()
@@ -81,6 +81,9 @@ abstract class AbstractRestRequest extends AbstractRequest
 
         // Guzzle HTTP Client createRequest does funny things when a GET request
         // has attached data, so don't send the data if the method is GET.
+
+        $ssl_verify = \TPConfig::Get('remote:atol:ssl_verify');
+        $this->httpClient->setSslVerification($ssl_verify, $ssl_verify);
         if ($this->getHttpMethod() == 'GET') {
             $data['tokenid'] = $this->getToken();
             $httpRequest = $this->httpClient->createRequest(
@@ -91,6 +94,7 @@ abstract class AbstractRestRequest extends AbstractRequest
                     'Content-type' => 'application/json',
                 ]
             );
+
         } else {
             $token['tokenid'] = $this->getToken();
             $httpRequest = $this->httpClient->createRequest(
@@ -98,15 +102,18 @@ abstract class AbstractRestRequest extends AbstractRequest
                 $this->getEndpoint() . '?' . http_build_query($token),
                 [
                     'Accept' => 'application/json',
-                    'Content-type' => 'application/json',
+                    'Content-type' => 'application/json'
                 ],
-                $this->toJSON($data)
+                $this->toJSON($data),
+                $this->getCurlOptions()
             );
         }
 
         try {
+
             $httpRequest->getCurlOptions()->set(CURLOPT_SSLVERSION, 6); // CURL_SSLVERSION_TLSv1_2 for libcurl < 7.35
             $httpResponse = $httpRequest->send();
+
             // Empty response body should be parsed also as and empty array
             $body = $httpResponse->getBody(true);
             $jsonToArrayResponse = !empty($body) ? $httpResponse->json() : array();
@@ -117,6 +124,17 @@ abstract class AbstractRestRequest extends AbstractRequest
                 $e->getCode()
             );
         }
+    }
+
+    public function getCurlOptions() {
+        $options = [];
+
+        $proxy = \TPConfig::Get('remote:atol:proxy');
+        if($proxy) {
+            $options['proxy'] = $proxy;
+        }
+
+        return $options;
     }
 
     public function toJSON($data, $options = 0)
